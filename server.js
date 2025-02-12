@@ -27,8 +27,8 @@ app.use(express.json());
 
 // Rate limiter (setelah CORS)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 menit
-  max: 1000, // Maksimal 100 request per IP dalam 15 menit
+  windowMs: 15 * 60 * 100, // 15 menit
+  max: 100000, // Maksimal 100 request per IP dalam 15 menit
   message: "Terlalu banyak request, coba lagi nanti.",
 });
 app.use(limiter);
@@ -57,13 +57,14 @@ app.get("/proxy/tiktok", async (req, res) => {
 
   try {
     // Lakukan request ke TikTok dengan axios
-    const response = await axios.head(url, {
+    const response = await axios.get(url, {
       maxRedirects: 5,
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, seperti Gecko) Chrome/114.0.0.0 Safari/537.36",
         "Referer": "https://www.tiktok.com/",
       },
     });
+    
 
     // Ambil URL asli setelah redirect
     const realUrl = response.request.res.responseUrl;
