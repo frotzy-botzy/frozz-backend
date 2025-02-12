@@ -8,6 +8,17 @@ const { sendNotification } = require('../controllers/notificationController');
 
 const router = express.Router();
 
+// API GET Semua Preset Secara Acak
+router.get('/random', async (req, res) => {
+    try {
+        const presets = await Preset.aggregate([{ $sample: { size: 10 } }]); // Ambil 10 preset secara acak
+        res.json(presets);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // UPLOAD PRESET (Hanya user yang login)
 router.post('/upload', auth, async (req, res) => {
     try {
@@ -157,32 +168,32 @@ router.get('/user/:username', async (req, res) => {
 });
 
 // GET PRESET BERDASARKAN KODE
-router.get('/:username/:presetId', async (req, res) => {
-    try {
-        const { username, presetId } = req.params;
-        console.log(`Mencari user dengan username: ${username} dan presetId: ${presetId}`);
+// router.get('/:username/:presetId', async (req, res) => {
+//     try {
+//         const { username, presetId } = req.params;
+//         console.log(`Mencari user dengan username: ${username} dan presetId: ${presetId}`);
 
-        // Cari user berdasarkan username
-        const user = await User.findOne({ username });
-        if (!user) {
-            console.log('User tidak ditemukan');
-            return res.status(404).json({ message: 'User tidak ditemukan' });
-        }
+//         // Cari user berdasarkan username
+//         const user = await User.findOne({ username });
+//         if (!user) {
+//             console.log('User tidak ditemukan');
+//             return res.status(404).json({ message: 'User tidak ditemukan' });
+//         }
 
-        // Cari preset berdasarkan ID dan pastikan milik user tersebut
-        const preset = await Preset.findOne({ _id: presetId, user: user._id });
-        if (!preset) {
-            console.log('Preset tidak ditemukan');
-            return res.status(404).json({ message: 'Preset tidak ditemukan' });
-        }
+//         // Cari preset berdasarkan ID dan pastikan milik user tersebut
+//         const preset = await Preset.findOne({ _id: presetId, user: user._id });
+//         if (!preset) {
+//             console.log('Preset tidak ditemukan');
+//             return res.status(404).json({ message: 'Preset tidak ditemukan' });
+//         }
 
-        res.json({ preset });
+//         res.json({ preset });
 
-    } catch (err) {
-        console.error('Terjadi kesalahan:', err.message);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
+//     } catch (err) {
+//         console.error('Terjadi kesalahan:', err.message);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// });
 
 // API TAMBAH KOMENTAR
 router.post('/comment/:presetId', auth, async (req, res) => {
@@ -354,32 +365,67 @@ router.get('/search', async (req, res) => {
     }
 });
 
-
-// API Bookmark Preset
+//API BOOKMARK
 router.post('/bookmark/:presetId', auth, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        const preset = await Preset.findById(req.params.presetId);
-
-        if (!preset) {
-            return res.status(404).json({ message: 'Preset tidak ditemukan!' });
+      const { presetId } = req.params;
+      const userId = req.user.id;
+  
+      // Ambil preset dari database
+      const preset = await Preset.findById(presetId);
+      if (!preset) {
+        return res.status(404).json({ message: 'Preset tidak ditemukan!' });
+      }
+  
+      // Ambil data user
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User tidak ditemukan' });
+      }
+  
+      // Cek apakah preset sudah ada di bookmarks user
+      const alreadyBookmarked = user.bookmarks.includes(presetId);
+  
+      if (alreadyBookmarked) {
+        // Unbookmark: Hapus preset dari user.bookmarks dan hapus user dari preset.bookmarkedBy
+        user.bookmarks = user.bookmarks.filter(id => id.toString() !== presetId);
+        preset.bookmarkedBy = preset.bookmarkedBy.filter(id => id.toString() !== userId);
+  
+        await user.save();
+        await preset.save();
+  
+        return res.json({
+          bookmarks: preset.bookmarkedBy.length,
+          message: 'Preset dihapus dari favorit!',
+          userBookmarks: user.bookmarks,
+          presetBookmarks: preset.bookmarkedBy
+        });
+      } else {
+        // Bookmark: Tambahkan preset ke user.bookmarks dan user ke preset.bookmarkedBy
+        user.bookmarks.push(presetId);
+        if (!preset.bookmarkedBy.includes(userId)) {
+          preset.bookmarkedBy.push(userId);
         }
-
-        if (user.bookmarks.includes(req.params.presetId)) {
-            // Jika sudah tersimpan, hapus dari bookmark (unbookmark)
-            user.bookmarks = user.bookmarks.filter(id => id.toString() !== req.params.presetId);
-            await user.save();
-            return res.json({ message: 'Preset dihapus dari favorit!', bookmarks: user.bookmarks });
-        } else {
-            // Jika belum tersimpan, tambahkan ke bookmark
-            user.bookmarks.push(req.params.presetId);
-            await user.save();
-            return res.json({ message: 'Preset ditambahkan ke favorit!', bookmarks: user.bookmarks });
-        }
+  
+        await user.save();
+        await preset.save();
+  
+        // Kirim notifikasi sebelum mengirim respon
+        await sendNotification(preset.user._id, user, 'bookmark', preset._id);
+  
+        return res.json({
+          bookmarks: preset.bookmarkedBy.length,
+          message: 'Preset ditambahkan ke favorit!',
+          userBookmarks: user.bookmarks,
+          presetBookmarks: preset.bookmarkedBy
+        });
+      }
     } catch (err) {
-        res.status(500).json({ message: 'Server error' });
+      console.error('Error pada bookmark endpoint:', err);
+      res.status(500).json({ message: 'Server error' });
     }
-});
+  });
+   
 
 // API Get Semua Bookmark User
 router.get('/bookmarks', auth, async (req, res) => {

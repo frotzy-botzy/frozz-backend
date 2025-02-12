@@ -6,6 +6,7 @@ const PresetSchema = new mongoose.Schema({
     videoUrl: { type: String, required: true }, // Link video TikTok/Shorts
     presetUrl: { type: String, required: true }, // Link download preset
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    bookmarkedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     createdAt: { type: Date, default: Date.now }
 });
 

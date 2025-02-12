@@ -9,6 +9,8 @@ const sendNotification = async (user, sender, type, preset = null) => {
         message = `${sender.username} menyukai preset kamu.`;
     } else if (type === 'comment') {
         message = `${sender.username} mengomentari preset kamu.`;
+    } else if (type === 'bookmark') {
+        message = `${sender.username} menambahkan ke favorit preset kamu.`;
     }
 
     const notification = new Notification({
