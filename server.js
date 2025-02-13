@@ -16,7 +16,7 @@ app.use(mongoSanitize()); // Mencegah NoSQL Injection
 
 // Konfigurasi CORS
 const corsOptions = {
-  origin: ["http://172.23.5.80:5173", "http://localhost:5173"], // Tambahkan domain frontend
+  origin: ["http://172.23.5.80:5173", "http://localhost:5173", "http://192.168.0.122:5173"], // Tambahkan domain frontend
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
