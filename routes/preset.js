@@ -144,21 +144,25 @@ router.post('/like/:presetId', auth, async (req, res) => {
     }
 });
 
-// GET SEMUA PRESET MILIK USER TERTENTU
-router.get('/user/:username', async (req, res) => {
+// GET SEMUA PRESET MILIK USER TERTENTU BERDASARKAN USER ID
+router.get('/user/:id', async (req, res) => {
     try {
         console.log("API dipanggil");  // Cek apakah API dipanggil
-        const { username } = req.params;
-        console.log("Mencari user:", username);
+        const { id } = req.params;
+        console.log("Mencari preset untuk user dengan ID:", id);
 
-        const user = await User.findOne({ username });
+        // Opsional: Cek apakah ID valid (jika menggunakan mongoose)
+        // if (!mongoose.Types.ObjectId.isValid(id)) {
+        //     return res.status(400).json({ message: 'User ID tidak valid' });
+        // }
+
+        const user = await User.findById(id);
         if (!user) {
             console.log("User tidak ditemukan");
             return res.status(404).json({ message: 'User tidak ditemukan' });
         }
 
-        const presets = await Preset.find({ user: user._id }).sort({ createdAt: -1 });
-
+        const presets = await Preset.find({ user: id }).sort({ createdAt: -1 });
         res.json({ presets });
 
     } catch (err) {
